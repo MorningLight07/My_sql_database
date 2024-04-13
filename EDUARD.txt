@@ -1,0 +1,736 @@
+package src;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.lang.*;
+import java.lang.Thread.State;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+
+
+
+class SingletonFile { 
+    private static SingletonFile single_instance = null; 
+    Connection connection;
+  
+    private SingletonFile() 
+    { 
+         try{
+             Class.forName("com.mysql.cj.jdbc.Driver");
+           connection =DriverManager.getConnection("jdbc:mysql://localhost:3306/sample_test","root","");    
+            }
+          catch(Exception e){
+           }
+    } 
+  
+    public static SingletonFile getInstance() 
+    { 
+        if (single_instance == null) 
+            single_instance = new SingletonFile(); 
+  
+        return single_instance; 
+    } 
+} 
+
+/*class DBConnection { 
+    Connection connection;
+    
+    DBConnection(){
+      try{
+             Class.forName("org.mariadb.jdbc.Driver");
+             connection = DriverManager.getConnection("jdbc:mariadb://localhost:3306/sample_test","root","");
+             
+            }
+          catch(Exception e){
+           }
+         
+      
+    }   
+
+  
+    public Connection getConnection(){  return connection;}
+} */
+
+
+abstract class Person extends Frame implements ActionListener {
+    
+    //Button
+    Button save = null;
+    Button back = null;
+
+    //Label
+    Label first_name = null;
+    Label last_name = null;
+    Label id = null;
+
+    //TextField
+    TextField first_name_input = null;
+    TextField last_name_input = null;
+    TextField id_input = null;
+
+    //Data Attributes
+    private String fname;
+    private String lname;
+    private String pid;
+
+    //Behaviors
+    public String getFname() {
+        return fname;
+    }
+    public void setFname(String fname) {
+        this.fname = fname;
+    }
+    public String getLname() {
+        return lname;
+    }
+    public void setLname(String lname) {
+        this.lname = lname;
+    }
+    public String getPid() {
+        return pid;
+    }
+    public void setPid(String pid) {
+        this.pid = pid;
+    }
+
+    public void actionPerformed(ActionEvent e){
+        //NULL
+    }
+}
+
+class SavePrompt extends Person {
+    JFrame frame = null;
+    Label info = null;
+    Button save = null;
+
+    SavePrompt(){
+        frame = new JFrame();
+        info = new Label("Saved!");
+        save = new Button("Okay");
+
+        frame.setSize(400, 200);
+        frame.setTitle("Saved!");
+        frame.setLocationRelativeTo(null);
+        frame.setLayout(null);
+        frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        frame.setVisible(true);
+
+        info.setFont(new Font("Times New Roman", Font.PLAIN, 40 ));
+        info.setForeground(Color.GREEN);
+        info.setBounds(120, 20, 150, 50);
+        frame.add(info);
+
+        save.setBounds(130, 80, 100, 60);
+        save.setFont(new Font("Times New Roman", Font.PLAIN, 15));
+        frame.add(save);
+
+        save.addActionListener(this);
+    }
+    public void actionPerformed(ActionEvent e){
+        if (e.getSource().equals(save)){
+            frame.dispose();
+            new MainMenuFrame();
+            
+        }
+    }
+}
+class EmptyPrompt extends Person {
+    JFrame frame = null;
+    Label info = null;
+    Button save = null;
+
+    EmptyPrompt(){
+        frame = new JFrame();
+        info = new Label("Empty!");
+        save = new Button("Okay");
+
+        frame.setSize(400, 200);
+        frame.setTitle("Empty!");
+        frame.setLocationRelativeTo(null);
+        frame.setLayout(null);
+        frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        frame.setVisible(true);
+
+        info.setFont(new Font("Times New Roman", Font.PLAIN, 40 ));
+        info.setForeground(Color.RED);
+        info.setBounds(120, 20, 150, 50);
+        frame.add(info);
+
+        save.setBounds(130, 80, 100, 60);
+        save.setFont(new Font("Times New Roman", Font.PLAIN, 15));
+        frame.add(save);
+
+        save.addActionListener(this);
+    }
+    public void actionPerformed(ActionEvent e){
+        if (e.getSource().equals(save)){
+            frame.dispose();
+        }
+    }
+}
+class PersonController{
+    //Data Attributes
+    private static String fname;
+    private static String lname;
+    private static String pid;
+
+    //Getters and Setters
+    public static String getFname() {
+        return fname;
+    }
+    public void setFname(String fname) {
+        this.fname = fname;
+    }
+    public static String getLname() {
+        return lname;
+    }
+    public void setLname(String lname) {
+        this.lname = lname;
+    }
+    public static String getPid() {
+        return pid;
+    }
+    public void setPid(String pid) {
+        this.pid = pid;
+    }
+
+    //Methods
+
+    public boolean Save(String isNewEntry)
+    {
+        PersonModel person = new PersonModel(); 
+        boolean isSuccessful = false;
+
+          
+        if(isNewEntry.equals("Yes")) 
+           isSuccessful = person.Add(this);
+        else 
+          isSuccessful = person.Update(this);
+
+        return isSuccessful;
+    } 
+}
+
+class PersonModel
+{
+    public boolean Add(PersonController person){
+          boolean iSuccess = false;
+      try{
+          //DBConnection conn = new DBConnection(); 
+          SingletonFile s = SingletonFile.getInstance();
+                
+          PreparedStatement preparedStatement = s.connection.prepareStatement("insert into person_table(PerID, PerFname, PerLname) values (?,?,?)");
+          
+          preparedStatement.setString(1, person.getPid());
+          preparedStatement.setString(2, person.getFname());
+          preparedStatement.setString(3, person.getLname());
+        
+          preparedStatement.addBatch();
+          preparedStatement.executeBatch();
+        
+          preparedStatement.clearBatch();
+          preparedStatement.close();
+          iSuccess = true;
+         }catch(SQLIntegrityConstraintViolationException sqlErr){
+                System.err.println("Duplicate Key!");
+                sqlErr.printStackTrace();
+          }catch(Exception exception){
+                System.err.println("Error occured!");
+                exception.printStackTrace();
+          }
+          return iSuccess;
+    }
+
+
+    public boolean Update(PersonController person){
+          boolean iSuccess = false;
+      try{
+          //DBConnection conn = new DBConnection(); 
+          SingletonFile s = SingletonFile.getInstance();
+                
+          PreparedStatement preparedStatement = s.connection.prepareStatement("Update person_table Set PerFname=?, PerLname=? " +
+                             " Where PerID = ? ");
+          
+          preparedStatement.setString(1, person.getFname());
+          preparedStatement.setString(2, person.getLname());
+          preparedStatement.setString(3, person.getPid());
+        
+          preparedStatement.addBatch();
+          preparedStatement.executeBatch();
+        
+          preparedStatement.clearBatch();
+          preparedStatement.close();
+          iSuccess = true;
+         }catch(SQLIntegrityConstraintViolationException sqlErr){
+                System.err.println("Duplicate Key!");
+                sqlErr.printStackTrace();
+          }catch(Exception exception){
+                System.err.println("Error occured!");
+                exception.printStackTrace();
+          }
+          return iSuccess;
+    }
+
+}
+class ViewFrame extends JFrame {
+    JButton closeButton;
+    JLabel idLabel, lastNameLabel, firstNameLabel;
+
+    ViewFrame(String id, String lastName, String firstName) {
+        setTitle("View");
+        setSize(600, 400);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridBagLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.anchor = GridBagConstraints.LINE_END;
+
+        idLabel = new JLabel("ID:");
+        idLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        panel.add(idLabel, gbc);
+        gbc.gridx++;
+        gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel idValueLabel = new JLabel(id);
+        idValueLabel.setFont(new Font("Arial", Font.PLAIN, 18));
+        panel.add(idValueLabel, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.anchor = GridBagConstraints.LINE_END;
+        lastNameLabel = new JLabel("Last Name:");
+        lastNameLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        panel.add(lastNameLabel, gbc);
+        gbc.gridx++;
+        gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lastNameValueLabel = new JLabel(lastName);
+        lastNameValueLabel.setFont(new Font("Arial", Font.PLAIN, 18));
+        panel.add(lastNameValueLabel, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.anchor = GridBagConstraints.LINE_END;
+        firstNameLabel = new JLabel("First Name:");
+        firstNameLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        panel.add(firstNameLabel, gbc);
+        gbc.gridx++;
+        gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel firstNameValueLabel = new JLabel(firstName);
+        firstNameValueLabel.setFont(new Font("Arial", Font.PLAIN, 18));
+        panel.add(firstNameValueLabel, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.gridwidth = 2;
+        gbc.anchor = GridBagConstraints.CENTER; // Center the button
+        closeButton = new JButton("Close");
+        closeButton.setFont(new Font("Arial", Font.BOLD, 18));
+     
+        closeButton.setFocusPainted(false);
+        closeButton.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+        closeButton.setPreferredSize(new Dimension(165, 45)); // Set preferred size to 100x40 pixels
+        closeButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                dispose();
+                
+            }
+        });
+        
+        panel.add(closeButton, gbc);
+
+        setContentPane(panel);
+        setVisible(true);
+    }
+}
+class ModifyFrame extends JFrame implements ActionListener {
+    JButton saveButton, closeButton;
+    JTextField fnameField, lnameField;
+    String id, lastName, firstName;
+    MainMenuFrame mainMenuFrame; // Reference to the main menu frame
+
+    ModifyFrame(String id, String lastName, String firstName, MainMenuFrame mainMenuFrame) {
+        this.id = id;
+        this.lastName = lastName;
+        this.firstName = firstName;
+        this.mainMenuFrame = mainMenuFrame; // Set the reference to the main menu frame
+
+        setTitle("Modify Person");
+        setSize(400, 300);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        JPanel formPanel = new JPanel(new GridLayout(2, 2, 10, 10));
+        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JLabel fnameLabel = new JLabel("First Name:");
+        fnameField = new JTextField(firstName);
+        JLabel lnameLabel = new JLabel("Last Name:");
+        lnameField = new JTextField(lastName);
+
+        formPanel.add(fnameLabel);
+        formPanel.add(fnameField);
+        formPanel.add(lnameLabel);
+        formPanel.add(lnameField);
+
+        JPanel buttonPanel = new JPanel();
+        saveButton = new JButton("SAVE");
+        closeButton = new JButton("CLOSE");
+        saveButton.addActionListener(this);
+        closeButton.addActionListener(this);
+        buttonPanel.add(saveButton);
+        buttonPanel.add(closeButton);
+
+        add(formPanel, BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setVisible(true);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == saveButton) {
+            // Get updated data from fields
+            String newFirstName = fnameField.getText();
+            String newLastName = lnameField.getText();
+
+            if (newFirstName.isEmpty() || newLastName.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please fill in all fields", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Update the data in the database
+            PersonController personController = new PersonController();
+            personController.setPid(id);
+            personController.setFname(newFirstName);
+            personController.setLname(newLastName);
+
+            boolean updated = personController.Save("No"); // "No" because it's an existing entry
+
+            if (updated) {
+                JOptionPane.showMessageDialog(this, "Updated Successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                dispose(); // Dispose of the ModifyFrame
+
+                // Refresh the existing MainMenuFrame
+                mainMenuFrame.refreshTable(); // Reload the data in the table
+            } else {
+                JOptionPane.showMessageDialog(this, "Error updating data. Please try again.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (e.getSource() == closeButton) {
+            dispose(); // Dispose of the ModifyFrame
+        }
+    }
+}
+class InsertFrame extends JFrame implements ActionListener {
+    JButton saveButton, closeButton;
+    JTextField idField, fnameField, lnameField;
+     
+    InsertFrame() {
+        setTitle("Insert New Person");
+        setSize(400, 300);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JLabel idLabel = new JLabel("ID:");
+        idField = new JTextField(10);
+        JLabel fnameLabel = new JLabel("First Name:");
+        fnameField = new JTextField(20);
+        JLabel lnameLabel = new JLabel("Last Name:");
+        lnameField = new JTextField(20);
+
+        formPanel.add(idLabel);
+        formPanel.add(idField);
+        formPanel.add(fnameLabel);
+        formPanel.add(fnameField);
+        formPanel.add(lnameLabel);
+        formPanel.add(lnameField);
+
+        JPanel buttonPanel = new JPanel();
+        saveButton = new JButton("SAVE");
+        closeButton = new JButton("CLOSE");
+        saveButton.addActionListener(this);
+        closeButton.addActionListener(this);
+        buttonPanel.add(saveButton);
+        buttonPanel.add(closeButton);
+
+        add(formPanel, BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setVisible(true);
+    }
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == saveButton) {
+            // Get data from fields
+            String id = idField.getText();
+            String firstName = fnameField.getText();
+            String lastName = lnameField.getText();
+            if (id.isEmpty() || firstName.isEmpty() || lastName.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please fill in all fields", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            PersonController personController = new PersonController();
+            personController.setPid(id);
+            personController.setFname(firstName);
+            personController.setLname(lastName);
+
+            boolean saved = personController.Save("Yes");
+
+            if (saved) {
+                new SavePrompt();
+                dispose(); // Dispose of the InsertForm frame
+                
+            } else {
+                JOptionPane.showMessageDialog(this, "This ID is already in use. Please choose a different one.", "Please input another ID", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (e.getSource() == closeButton) {
+            new MainMenuFrame();
+            dispose();
+        }
+    }
+}
+
+class MainMenu extends JFrame implements ActionListener {
+    JButton personsButton, exitButton;
+
+    MainMenu() {
+        setTitle("Main Menu");
+        setSize(500, 300);
+        setLocationRelativeTo(null);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridLayout(2, 1, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setBackground(new Color(255, 215, 0));
+
+        personsButton = new JButton("PERSON");
+        personsButton.setFont(new Font("Arial", Font.BOLD, 18));
+        personsButton.setBackground(Color.BLUE);
+        personsButton.setForeground(Color.WHITE);
+        personsButton.setFocusPainted(false);
+        personsButton.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+
+        exitButton = new JButton("EXIT");
+        exitButton.setFont(new Font("Arial", Font.BOLD, 18));
+        exitButton.setBackground(new Color(20, 13, 28));
+        exitButton.setForeground(Color.WHITE);
+        exitButton.setFocusPainted(false);
+        exitButton.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+
+        panel.add(personsButton);
+        panel.add(exitButton);
+
+        personsButton.addActionListener(this);
+        exitButton.addActionListener(this);
+
+        setContentPane(panel);
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setVisible(true);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource().equals(personsButton)) {
+            // Open the Main Menu frame
+            new MainMenuFrame();
+            dispose(); // Close the current frame
+        } else if (e.getSource().equals(exitButton)) {
+            // Exit the application
+            dispose();
+        }
+    }
+}
+class MainMenuFrame extends JFrame implements ActionListener {
+    JButton insertButton, modifyButton, viewButton, closeButton;
+    JTable personTable;
+    DefaultTableModel tableModel;
+
+    
+
+    MainMenuFrame() {
+        setTitle("Person Listings");
+        setSize(600, 400);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
+        JPanel panel = new JPanel();
+        panel.setLayout(new BorderLayout());
+        panel.setBackground(Color.GRAY);
+        
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();                  // Get screen size
+        int halfScreenWidth = screenSize.width / 2;
+        int halfScreenHeight = screenSize.height / 2;
+
+        setSize(halfScreenWidth, halfScreenHeight);                                          // Set frame size to half of the screen size
+
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        //buttonPanel.setLayout(new GridLayout(1, 4, 5, 5));
+        insertButton = new JButton("Insert");
+        insertButton.setFont(new Font("Arial", Font.BOLD, 18));
+        
+        insertButton.setFocusPainted(false);
+        insertButton.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));  // Border color black 
+
+        modifyButton = new JButton("Modify");
+        modifyButton.setFont(new Font("Arial", Font.BOLD, 18));
+      
+        modifyButton.setFocusPainted(false);
+        modifyButton.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));  // Border color black 
+
+
+        viewButton = new JButton("View");
+        viewButton.setFont(new Font("Arial", Font.BOLD, 18));
+       
+        viewButton.setFocusPainted(false);
+        viewButton.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));  // Border color black 
+
+        closeButton = new JButton("Close");
+        closeButton.setFont(new Font("Arial", Font.BOLD, 18));
+        
+        closeButton.setFocusPainted(false);
+        closeButton.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));  // Border color black 
+
+
+        
+
+        insertButton.setPreferredSize(new Dimension(150, 40));                    // button sizes 
+        modifyButton.setPreferredSize(new Dimension(150, 40));
+        viewButton.setPreferredSize(new Dimension(150, 40));
+        closeButton.setPreferredSize(new Dimension(150, 40));
+
+        insertButton.addActionListener(this);
+        modifyButton.addActionListener(this);
+        viewButton.addActionListener(this);
+        closeButton.addActionListener(this);
+
+        buttonPanel.add(insertButton);
+        buttonPanel.add(modifyButton);
+        buttonPanel.add(viewButton);
+        buttonPanel.add(closeButton);
+
+        panel.add(buttonPanel, BorderLayout.NORTH);
+
+        DefaultTableModel tableModel = new DefaultTableModel();
+        tableModel.addColumn("ID");
+        tableModel.addColumn("Last Name");
+        tableModel.addColumn("First Name");
+
+        personTable = new JTable(tableModel);
+        
+        personTable.setBackground(new Color(192, 192, 192));
+        personTable.setForeground(new Color(2, 48, 32));
+        JScrollPane scrollPane = new JScrollPane(personTable);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+
+       
+        getContentPane().add(panel);
+        setVisible(true);
+        populateTable();
+    }
+
+    public void refreshTable() {
+        DefaultTableModel model = (DefaultTableModel) personTable.getModel();
+        model.setRowCount(0); // Clear the existing rows
+        populateTable(); // Populate the table with fresh data
+    }
+
+    // Method to populate data into the table
+    private void populateTable() {
+        try {
+            // Get database connection
+            SingletonFile s = SingletonFile.getInstance();
+            Connection connection = s.connection;
+
+            // Create statement
+            Statement statement = connection.createStatement();
+
+            // Execute query to fetch data from database
+            ResultSet resultSet = statement.executeQuery("SELECT PerID, PerLname, PerFname FROM person_table");
+
+            // Populate data into the table
+            DefaultTableModel model = (DefaultTableModel) personTable.getModel();
+            while (resultSet.next()) {
+                String id = resultSet.getString("PerID");
+                String lastName = resultSet.getString("PerLname");
+                String firstName = resultSet.getString("PerFname");
+                model.addRow(new Object[]{id, lastName, firstName});
+            }
+
+            // Close statement and result set
+            statement.close();
+            resultSet.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error occurred while fetching data from the database", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == closeButton) {
+            closeFrame();
+        }
+        else if (e.getSource() == insertButton) {
+            new InsertFrame();
+            dispose();
+            
+        }
+        DefaultTableModel tableModel = (DefaultTableModel) personTable.getModel();
+        int selectedRow = personTable.getSelectedRow();
+        if (e.getSource() == viewButton) {
+            if (personTable.getSelectedRow() != -1) { // Check if a row is selected
+                String id = tableModel.getValueAt(personTable.getSelectedRow(), 0).toString();
+                String lastName = tableModel.getValueAt(personTable.getSelectedRow(), 1).toString();
+                String firstName = tableModel.getValueAt(personTable.getSelectedRow(), 2).toString();
+                new ViewFrame(id, lastName, firstName); // Display the selected person's information
+            } else {
+                JOptionPane.showMessageDialog(this, "Please select a person to view.");
+            }
+        }
+        if (e.getSource() == modifyButton) {
+           
+            if (selectedRow != -1) { // Check if a row is selected
+                String id = tableModel.getValueAt(selectedRow, 0).toString();
+                String lastName = tableModel.getValueAt(selectedRow, 1).toString();
+                String firstName = tableModel.getValueAt(selectedRow, 2).toString();
+                new ModifyFrame(id, lastName, firstName,this); // Open the ModifyFrame with selected person's data
+            } else {
+                JOptionPane.showMessageDialog(this, "Please select a person to modify.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+       
+
+    void closeFrame() {
+        dispose();
+        new MainMenu();
+    }
+}
+public class RunPersonVer2 {
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(MainMenu::new);
+    }
+}
